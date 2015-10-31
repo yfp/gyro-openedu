@@ -1,21 +1,31 @@
 Gyro = do ->
   $(()->
+    pi = Math.PI
     width = 400
     height = 400
     container = undefined
     renderer = undefined
     scene = undefined
     camera = undefined
-    projector = undefined
+    raycaster = new THREE.Raycaster()
     ambientlight = undefined
     directionalLight = undefined
     cylinder = undefined
     cube = undefined
     unselectedMaterial = undefined
     selectedMaterial = undefined
+    controls = undefined
+    model = undefined
+
+    simulationState = off
+    rotationVelocity = {
+      precession: 30
+      nutation: 0
+      rotation: 400
+    }
 
     precession = {id: 'precession', value: 20}
-    nutation   = {id: 'nutation', value: 30}
+    nutation   = {id: 'nutation', value: 45}
     rotation   = {id: 'rotation', value: 0}
 
     console.log 'loaded'
@@ -26,7 +36,6 @@ Gyro = do ->
         value: s.value
         slide: (ui, value) ->
           s.value = value
-          # console.log s.id
 
     # Revolutions per second
     angularSpeed = 0
@@ -41,9 +50,6 @@ Gyro = do ->
 
     init = ->
       container = document.getElementById('container')
-      # Renderer
-      # First check if WebGL is supported. If not, rely on the canvas
-      # render and use a scene with less triangles as it is slow.
       testCanvas = document.createElement('canvas')
       webglContext = null
       contextNames = [
@@ -83,13 +89,30 @@ Gyro = do ->
       camera.up.set 0, 0, 1
       camera.lookAt new (THREE.Vector3)(0, 0, 0)
       camera.updateProjectionMatrix()
+
+      controls = new THREE.TrackballControls( camera );
+
+      controls.rotateSpeed = 1.0;
+      controls.zoomSpeed = 1.2;
+      controls.panSpeed = 0.8;
+
+      controls.noZoom = false;
+      controls.noPan = false;
+
+      controls.staticMoving = true;
+      controls.dynamicDampingFactor = 0.3;
+
+      controls.keys = [ 65, 83, 68 ];
+
+      controls.addEventListener( 'change', render );
+
       # Materials
-      unselectedMaterial = new (THREE.MeshPhongMaterial)(
+      unselectedMaterial = new THREE.MeshPhongMaterial(
         specular: '#a9fcff'
         color: '#00abb1'
         emissive: '#006063'
         shininess: 100)
-      selectedMaterial = new (THREE.MeshPhongMaterial)(
+      selectedMaterial = new THREE.MeshPhongMaterial(
         specular: '#a9fcff'
         color: '#abb100'
         emissive: '#606300'
@@ -97,13 +120,42 @@ Gyro = do ->
       if !webglContext
         unselectedMaterial.overdraw = 1.0
         selectedMaterial.overdraw = 1.0
+
+      # Arrow = (color, height, ) ->
+
+      # gyroscope model
+      model = new THREE.Group()
+      do ->
+        cone_height = 100
+        cone_radius = 30
+        geometry = new THREE.CylinderGeometry cone_radius, 5, cone_height,radiusSegments,heightSegments
+        cone = new THREE.Mesh geometry, unselectedMaterial
+        cone.rotation.x = pi/2
+        cone.position.z = cone_height/2
+        model.add cone
+        geometry = new THREE.CubeGeometry 20, 20, 20
+        [0,1,2,3].map (i) ->
+          cubic = new THREE.Mesh geometry, unselectedMaterial
+          cubic.position.z = cone_height
+          cubic.position.x = cone_radius * Math.cos pi*i/2
+          cubic.position.y = cone_radius * Math.sin pi*i/2
+          model.add cubic
+      scene.add model
+
+      # plane
+      do ->
+        geometry = new THREE.PlaneGeometry( 300, 300, 32 )
+        material = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} )
+        plane = new THREE.Mesh( geometry, material )
+        scene.add plane
+
       # Cube
       cube = new (THREE.Mesh)(new (THREE.CubeGeometry)(100, 150, 200), unselectedMaterial)
       cube.position.x = 0
       cube.overdraw = true
       # cube.omega = new THREE.Vector3(0,0,0.1);
       cube.quaternion.setFromAxisAngle new (THREE.Vector3)(1, 1, 1), Math.PI / 3
-      scene.add cube
+      # scene.add cube
       # Ambient light
       ambientLight = new (THREE.AmbientLight)(0x222222)
       scene.add ambientLight
@@ -112,9 +164,15 @@ Gyro = do ->
       directionalLight.position.set(1, 1, 1).normalize()
       scene.add directionalLight
       # Used to select element with mouse click
-      projector = new (THREE.Projector)
-      renderer.domElement.addEventListener 'click', onMouseClick, false
+      # projector = new (THREE.Projector)
+      # renderer.domElement.addEventListener 'click', onMouseClick, false
+      $('.play').click (el) ->
+        console.log 'hello'
+        $(@).toggleClass 'on'
+        simulationState = $(@).hasClass 'on'
+
       # Start animation
+      render()
       animate()
       return
 
@@ -123,6 +181,7 @@ Gyro = do ->
     animate = ->
       # Request new frame
       requestAnimationFrame animate
+      controls.update()
       render()
       return
 
@@ -130,10 +189,12 @@ Gyro = do ->
       # Update
       time = (new Date).getTime()
       timeDiff = time - lastTime
-      angleChange = angularSpeed * timeDiff / 1000
-      rotation.value += angleChange
-      rotation.value = rotation.value % 360
-      rotation.slider.setValue Math.floor(rotation.value)
+      rotationVelocity.precession = 90 * Math.abs( Math.sin pi*nutation.value/180)
+      if simulationState
+        [precession, nutation, rotation].map (e) ->
+          e.value += rotationVelocity[e.id] * timeDiff / 1000
+          e.value = (e.value+360) % 360
+          e.slider.setValue Math.floor(e.value)
       lastTime = time
 
       q = new THREE.Quaternion()
@@ -149,36 +210,37 @@ Gyro = do ->
       #   'XYZ' )
             
       # console.log euler
-      cube.quaternion.copy q
+      model.quaternion.copy q
 
       # Render
       renderer.render scene, camera
       return
 
     onMouseClick = (event) ->
-      vector = undefined
-      raycaster = undefined
-      intersects = undefined
-      vector = new (THREE.Vector3)(event.clientX / width * 2 - 1, -(event.clientY / height) * 2 + 1, 1)
-      projector.unprojectVector vector, camera
-      raycaster = new (THREE.Raycaster)(camera.position, vector.sub(camera.position).normalize())
-      intersects = raycaster.intersectObjects(scene.children)
-      if intersects.length > 0
-        if intersects[0].object == cube
-          state.selectedObjects.cube = !state.selectedObjects.cube
-          if angularSpeed > 0
-            angularSpeed = 0
-          else
-            angularSpeed = 200
-        updateMaterials()
-      return
+      # mouse = {
+      #   x:   ( event.clientX / window.innerWidth  ) * 2 - 1
+      #   y: - ( event.clientY / window.innerHeight ) * 2 + 1
+      # }
+      # raycaster.setFromCamera( mouse, camera );
+
+      # intersects = raycaster.intersectObjects(scene.children, true)
+
+      # console.log intersects, model.children
+      # if intersects.length > 0
+      #   if intersects[0].object == model
+      #     state.selectedObjects.cube = !state.selectedObjects.cube
+      #     if angularSpeed > 0
+      #       angularSpeed = 0
+      #     else
+      #       angularSpeed = 200
+      #   updateMaterials()
 
     updateMaterials = ->
-      if state.selectedObjects.cube
-        cube.material = selectedMaterial
-      else
-        cube.material = unselectedMaterial
-      return
+      material = if state.selectedObjects.cube
+        selectedMaterial
+      else unselectedMaterial
+      for child in model.children
+        child.material = material
 
     getGrade = ->
       # The following return value may or may not be used to grade

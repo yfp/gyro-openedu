@@ -3,27 +3,36 @@ var Gyro;
 
 Gyro = (function() {
   return $(function() {
-    var ambientlight, angularSpeed, animate, camera, channel, container, cube, cylinder, directionalLight, getGrade, getState, height, init, lastTime, nutation, onMouseClick, precession, projector, render, renderer, rotation, scene, selectedMaterial, setState, state, unselectedMaterial, updateMaterials, width;
+    var ambientlight, angularSpeed, animate, camera, channel, container, controls, cube, cylinder, directionalLight, getGrade, getState, height, init, lastTime, model, nutation, onMouseClick, pi, precession, raycaster, render, renderer, rotation, rotationVelocity, scene, selectedMaterial, setState, simulationState, state, unselectedMaterial, updateMaterials, width;
+    pi = Math.PI;
     width = 400;
     height = 400;
     container = void 0;
     renderer = void 0;
     scene = void 0;
     camera = void 0;
-    projector = void 0;
+    raycaster = new THREE.Raycaster();
     ambientlight = void 0;
     directionalLight = void 0;
     cylinder = void 0;
     cube = void 0;
     unselectedMaterial = void 0;
     selectedMaterial = void 0;
+    controls = void 0;
+    model = void 0;
+    simulationState = false;
+    rotationVelocity = {
+      precession: 30,
+      nutation: 0,
+      rotation: 400
+    };
     precession = {
       id: 'precession',
       value: 20
     };
     nutation = {
       id: 'nutation',
-      value: 30
+      value: 45
     };
     rotation = {
       id: 'rotation',
@@ -91,6 +100,16 @@ Gyro = (function() {
       camera.up.set(0, 0, 1);
       camera.lookAt(new THREE.Vector3(0, 0, 0));
       camera.updateProjectionMatrix();
+      controls = new THREE.TrackballControls(camera);
+      controls.rotateSpeed = 1.0;
+      controls.zoomSpeed = 1.2;
+      controls.panSpeed = 0.8;
+      controls.noZoom = false;
+      controls.noPan = false;
+      controls.staticMoving = true;
+      controls.dynamicDampingFactor = 0.3;
+      controls.keys = [65, 83, 68];
+      controls.addEventListener('change', render);
       unselectedMaterial = new THREE.MeshPhongMaterial({
         specular: '#a9fcff',
         color: '#00abb1',
@@ -107,32 +126,71 @@ Gyro = (function() {
         unselectedMaterial.overdraw = 1.0;
         selectedMaterial.overdraw = 1.0;
       }
+      model = new THREE.Group();
+      (function() {
+        var cone, cone_height, cone_radius, geometry;
+        cone_height = 100;
+        cone_radius = 30;
+        geometry = new THREE.CylinderGeometry(cone_radius, 5, cone_height, radiusSegments, heightSegments);
+        cone = new THREE.Mesh(geometry, unselectedMaterial);
+        cone.rotation.x = pi / 2;
+        cone.position.z = cone_height / 2;
+        model.add(cone);
+        geometry = new THREE.CubeGeometry(20, 20, 20);
+        return [0, 1, 2, 3].map(function(i) {
+          var cubic;
+          cubic = new THREE.Mesh(geometry, unselectedMaterial);
+          cubic.position.z = cone_height;
+          cubic.position.x = cone_radius * Math.cos(pi * i / 2);
+          cubic.position.y = cone_radius * Math.sin(pi * i / 2);
+          return model.add(cubic);
+        });
+      })();
+      scene.add(model);
+      (function() {
+        var geometry, material, plane;
+        geometry = new THREE.PlaneGeometry(300, 300, 32);
+        material = new THREE.MeshBasicMaterial({
+          color: 0xffff00,
+          side: THREE.DoubleSide
+        });
+        plane = new THREE.Mesh(geometry, material);
+        return scene.add(plane);
+      })();
       cube = new THREE.Mesh(new THREE.CubeGeometry(100, 150, 200), unselectedMaterial);
       cube.position.x = 0;
       cube.overdraw = true;
       cube.quaternion.setFromAxisAngle(new THREE.Vector3(1, 1, 1), Math.PI / 3);
-      scene.add(cube);
       ambientLight = new THREE.AmbientLight(0x222222);
       scene.add(ambientLight);
       directionalLight = new THREE.DirectionalLight(0xffffff);
       directionalLight.position.set(1, 1, 1).normalize();
       scene.add(directionalLight);
-      projector = new THREE.Projector;
-      renderer.domElement.addEventListener('click', onMouseClick, false);
+      $('.play').click(function(el) {
+        console.log('hello');
+        $(this).toggleClass('on');
+        return simulationState = $(this).hasClass('on');
+      });
+      render();
       animate();
     };
     animate = function() {
       requestAnimationFrame(animate);
+      controls.update();
       render();
     };
     render = function() {
-      var angleChange, q, qaa, time, timeDiff;
+      var q, qaa, time, timeDiff;
       time = (new Date).getTime();
       timeDiff = time - lastTime;
-      angleChange = angularSpeed * timeDiff / 1000;
-      rotation.value += angleChange;
-      rotation.value = rotation.value % 360;
-      rotation.slider.setValue(Math.floor(rotation.value));
+      rotationVelocity.precession = 90 * Math.abs(Math.sin(pi * nutation.value / 180));
+      if (simulationState) {
+        [precession, nutation, rotation].map(function(e) {
+          e.value += rotationVelocity[e.id] * timeDiff / 1000;
+          e.value = (e.value + 360) % 360;
+          return e.slider.setValue(Math.floor(e.value));
+        });
+      }
       lastTime = time;
       q = new THREE.Quaternion();
       qaa = function(x, y, z, a) {
@@ -141,36 +199,20 @@ Gyro = (function() {
       q.multiply(qaa(0, 0, 1, Math.PI * precession.value / 180));
       q.multiply(qaa(1, 0, 0, Math.PI * nutation.value / 180));
       q.multiply(qaa(0, 0, 1, Math.PI * rotation.value / 180));
-      cube.quaternion.copy(q);
+      model.quaternion.copy(q);
       renderer.render(scene, camera);
     };
-    onMouseClick = function(event) {
-      var intersects, raycaster, vector;
-      vector = void 0;
-      raycaster = void 0;
-      intersects = void 0;
-      vector = new THREE.Vector3(event.clientX / width * 2 - 1, -(event.clientY / height) * 2 + 1, 1);
-      projector.unprojectVector(vector, camera);
-      raycaster = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
-      intersects = raycaster.intersectObjects(scene.children);
-      if (intersects.length > 0) {
-        if (intersects[0].object === cube) {
-          state.selectedObjects.cube = !state.selectedObjects.cube;
-          if (angularSpeed > 0) {
-            angularSpeed = 0;
-          } else {
-            angularSpeed = 200;
-          }
-        }
-        updateMaterials();
-      }
-    };
+    onMouseClick = function(event) {};
     updateMaterials = function() {
-      if (state.selectedObjects.cube) {
-        cube.material = selectedMaterial;
-      } else {
-        cube.material = unselectedMaterial;
+      var child, j, len, material, ref, results;
+      material = state.selectedObjects.cube ? selectedMaterial : unselectedMaterial;
+      ref = model.children;
+      results = [];
+      for (j = 0, len = ref.length; j < len; j++) {
+        child = ref[j];
+        results.push(child.material = material);
       }
+      return results;
     };
     getGrade = function() {
       return JSON.stringify(state['selectedObjects']);

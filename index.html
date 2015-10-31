@@ -8,6 +8,7 @@
 
     <script src="jschannel.js"></script>
     <script src="three.min.js"></script>
+    <script src="trackball_controls.js"></script>
 
     <script src="physics.js" defer='defer'></script>
 
@@ -16,9 +17,10 @@
 <body>
     <div id="container"></div>
     <div id="controls">
-    	<div id="precession"></div>
-    	<div id="nutation"></div>
-    	<div id="rotation"></div>
+    	<div id="precession" class="knob"></div>
+        <div id="nutation" class="knob"></div>
+    	<div id="rotation" class="knob"></div>
+        <a class="play button">Запустить ►<a>
     </div>
 </body>
 </html>
