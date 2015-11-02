@@ -1,7 +1,7 @@
 #container {
 	background-color: black;
 	width: 400px;
-	height:400px;
+	height:300px;
 	border: 1px solid gray;
 	float: left;
 }
@@ -10,7 +10,14 @@
 	float: left;
 	border: 1px solid gray;
 	width:  400px;
-	height: 400px;
+	height: 300px;
+}
+
+#plot{
+	clear: both;
+	border: 1px solid gray;
+	width: 800px;
+	height: 300px;
 }
 
 .knob{

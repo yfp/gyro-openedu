@@ -37,11 +37,11 @@ stepRungeKutta = function(vec, func, t, dt) {
 
 Gyro = (function() {
   return $(function() {
-    var J, MAX_POINTS, ambientlight, angularSpeed, animate, camera, channel, container, controls, cube, cylinder, degree, directionalLight, getDerivative, getGrade, getState, gyroGeometry, height, init, lastTime, line, max_nutation, model, nutation, nutationDot, omega, pi, precession, precessionDot, raycaster, render, renderer, rotation, rotationDot, rotationVelocity, scene, selectedMaterial, setState, simulationState, state, stopSimulation, unselectedMaterial, updateInitialConditions, updateMaterials, weight, width;
+    var J, MAX_POINTS, ambientlight, angularSpeed, animate, camera, channel, container, controls, cube, cylinder, degree, directionalLight, getDerivative, getGrade, getState, gyroGeometry, height, init, lastTime, line, max_nutation, model, nutData, nutation, nutationDot, omega, pi, plot, plotData, precession, precessionDot, raycaster, render, renderer, rotation, rotationDot, rotationVelocity, scene, selectedMaterial, setState, simulationState, startTime, state, stopSimulation, unselectedMaterial, updateInitialConditions, updateMaterials, weight, width;
     pi = Math.PI;
     degree = pi / 180;
     width = 400;
-    height = 400;
+    height = 300;
     container = void 0;
     renderer = void 0;
     scene = void 0;
@@ -56,6 +56,21 @@ Gyro = (function() {
     controls = void 0;
     model = void 0;
     line = void 0;
+    startTime = (new Date).getTime();
+    plot = void 0;
+    nutData = [];
+    plotData = {
+      theta: {
+        data: [[0, 0]],
+        label: "theta",
+        color: 1
+      },
+      psi: {
+        data: [[0, 0]],
+        label: "psi",
+        color: 0
+      }
+    };
     MAX_POINTS = 5000;
     simulationState = false;
     rotationVelocity = {
@@ -125,7 +140,6 @@ Gyro = (function() {
       omega.x = psid * sin(theta) * sin(phi) + thetad * cos(phi);
       omega.y = psid * sin(theta) * cos(phi) - thetad * sin(phi);
       omega.z = psid * cos(theta) + phid;
-      console.log("updated", omega);
       q = new THREE.Quaternion();
       qaa = function(x, y, z, a) {
         return new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(x, y, z), a);
@@ -275,12 +289,21 @@ Gyro = (function() {
       directionalLight.position.set(1, 1, 1).normalize();
       scene.add(directionalLight);
       $('.play').click(function(el) {
+        var k, results, v;
         console.log('Clicked');
         $(this).toggleClass('on');
         simulationState = $(this).hasClass('on');
         if (simulationState === true) {
+          startTime = (new Date).getTime();
           line.geometry.setDrawRange(0, 0);
-          return line.geometry.attributes.position.len = 0;
+          line.geometry.attributes.position.len = 0;
+          results = [];
+          for (k in plotData) {
+            v = plotData[k];
+            console.log(k);
+            results.push(v.data = []);
+          }
+          return results;
         }
       });
       console.log('loaded');
@@ -304,11 +327,11 @@ Gyro = (function() {
         s.value = parseFloat($el.val());
         return $el.on('change', function(el) {
           s.value = parseFloat($el.val());
-          updateInitialConditions();
-          return console.log(s.id, s.value, $el.val());
+          return updateInitialConditions();
         });
       });
       updateInitialConditions();
+      plot = $('#plot').plot([plotData.theta, plotData.psi]).data("plot");
       render();
       animate();
     };
@@ -329,8 +352,9 @@ Gyro = (function() {
       return [quatd[0], quatd[1], quatd[2], quatd[3], pqrd[0], pqrd[1], pqrd[2]];
     };
     render = function() {
-      var cosAngle, dt, i, nutAngle, p, pos, proj, psiAngle, q, r, ref, time, vert, w, x, y, z;
+      var cosAngle, dt, i, nutAngle, p, pos, proj, psiAngle, q, r, ref, t, time, vert, w, x, y, z;
       time = (new Date).getTime();
+      t = (time - startTime) / 1000.0;
       dt = (time - lastTime) / 1000;
       rotationVelocity.precession = 90 * Math.abs(Math.sin(pi * nutation.value / 180));
       if (simulationState) {
@@ -344,16 +368,19 @@ Gyro = (function() {
         nutAngle = Math.acos(cosAngle);
         psiAngle = Math.atan2(w * y + x * z, w * x - y * z);
         proj = gyroGeometry.centerMass * Math.sin(nutAngle);
-        console.log(nutAngle / degree, psiAngle / degree);
         vert = [-proj * Math.sin(psiAngle), proj * Math.cos(psiAngle), 0];
         pos = line.geometry.attributes.position;
+        plotData.theta.data.push([t, nutAngle / degree]);
+        plotData.psi.data.push([t, psiAngle / degree]);
+        plot.setData([plotData.theta, plotData.psi]);
+        plot.setupGrid();
+        plot.draw();
         if (pos.len < MAX_POINTS) {
           i = pos.len;
           pos.array[3 * i + 0] = vert[0];
           pos.array[3 * i + 1] = vert[1];
           pos.array[3 * i + 2] = vert[2];
           pos.len += 1;
-          console.log(pos.len);
           line.geometry.setDrawRange(0, i + 1);
           line.geometry.attributes.position.needsUpdate = true;
         } else {

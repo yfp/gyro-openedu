@@ -30,7 +30,7 @@ Gyro = do ->
     pi = Math.PI
     degree = pi/180
     width = 400
-    height = 400
+    height = 300
     container = undefined
     renderer = undefined
     scene = undefined
@@ -45,6 +45,23 @@ Gyro = do ->
     controls = undefined
     model = undefined
     line = undefined
+    startTime = (new Date).getTime()
+    plot = undefined
+    nutData = []
+    plotData = {
+      theta:
+        data: [ [0,0] ]
+        label: "theta"
+        color: 1
+      psi:
+        data: [ [0,0] ]
+        label: "psi"
+        color: 0
+      # q:
+      #   data: [ [0,0] ]
+      #   label: "q"
+      #   color: 2
+    }
     MAX_POINTS = 5000
 
     simulationState = off
@@ -108,7 +125,7 @@ Gyro = do ->
       omega.y = psid * sin(theta)*cos(phi) - thetad * sin(phi)
       omega.z = psid * cos(theta) + phid
 
-      console.log "updated", omega
+      # console.log "updated", omega
 
       q = new THREE.Quaternion()
       qaa = (x, y, z, a) ->
@@ -266,8 +283,12 @@ Gyro = do ->
         $(@).toggleClass 'on'
         simulationState = $(@).hasClass 'on'
         if simulationState == on
+          startTime = (new Date).getTime()
           line.geometry.setDrawRange( 0, 0 )
           line.geometry.attributes.position.len = 0
+          for k, v of plotData
+            console.log k
+            v.data = []
 
       console.log 'loaded'
       [precession, nutation, rotation].map (s) ->
@@ -279,7 +300,10 @@ Gyro = do ->
           max:   if s.id == 'nutation' then 179
           clockwise: off
           slide: (ui, value) ->
-            s.value = value
+            # if s.id == 'nutation' and value > max_nutation/degree
+            #   value = Math.floor value
+              # s.slider.setValue value
+            s.value = value  
             updateInitialConditions()
 
       [precessionDot, nutationDot, rotationDot].map (s)->
@@ -288,9 +312,11 @@ Gyro = do ->
         $el.on 'change', (el) ->
           s.value = parseFloat $el.val()
           updateInitialConditions()
-          console.log s.id, s.value, $el.val()
+          # console.log s.id, s.value, $el.val()
       
       updateInitialConditions()
+
+      plot = $('#plot').plot([plotData.theta, plotData.psi]).data("plot")
 
       render()
       animate()
@@ -326,6 +352,7 @@ Gyro = do ->
       
     render = ->
       time = (new Date).getTime()
+      t =  (time - startTime)/1000.0
       dt = (time - lastTime) / 1000
       rotationVelocity.precession = 90 * Math.abs( Math.sin pi*nutation.value/180)
       if simulationState
@@ -348,10 +375,17 @@ Gyro = do ->
         nutAngle = Math.acos(cosAngle)
         psiAngle = Math.atan2 w*y+x*z, w*x-y*z
         proj = gyroGeometry.centerMass*Math.sin nutAngle
-        console.log nutAngle/degree, psiAngle/degree
+        # console.log nutAngle/degree, psiAngle/degree
         vert = [ -proj*Math.sin(psiAngle), proj*Math.cos(psiAngle), 0 ]
 
         pos = line.geometry.attributes.position
+
+        plotData.theta.data.push [t, nutAngle/degree]
+        plotData.psi.data.push [t, psiAngle/degree]
+        # console.log nutData
+        plot.setData([plotData.theta, plotData.psi])
+        plot.setupGrid()
+        plot.draw()
 
         if pos.len < MAX_POINTS
           i = pos.len
@@ -359,7 +393,7 @@ Gyro = do ->
           pos.array[3*i+1] = vert[1]
           pos.array[3*i+2] = vert[2]
           pos.len += 1
-          console.log pos.len
+          # console.log pos.len
           line.geometry.setDrawRange 0, i+1
           line.geometry.attributes.position.needsUpdate = true
         else
