@@ -4,6 +4,12 @@
     <link rel="stylesheet" type="text/css" href="gyro.css">
     <link rel="stylesheet" href="circular-slider.css" />
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script>
+    <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}
+    });
+    </script>
     <script src="circular-slider.js"></script>
 
     <script src="jschannel.js"></script>
@@ -17,9 +23,29 @@
 <body>
     <div id="container"></div>
     <div id="controls">
-    	<div id="precession" class="knob"></div>
-        <div id="nutation" class="knob"></div>
-    	<div id="rotation" class="knob"></div>
+        <h3> Начальные условия </h3>
+        <div class="column" id="precession">
+            <span class="knob-index">$\psi$</span>
+            <div  class="knob"></div>
+            <span class="der">$\dot\psi$
+                <input class="der-input" type="text" value="0.500">
+            </span>
+        </div>
+        <div class="column" id="nutation">
+            <span class="knob-index">$\theta$</span>
+            <div class="knob"></div>
+            <span class="der">$\dot\theta$
+                <input class="der-input" type="text" value="0.420">
+            </span>
+        </div>
+        <div class="column"  id="rotation">
+            <span class="knob-index">$\varphi$</span>
+            <div class="knob"></div>
+            <span class="der">$\dot\varphi$
+                <input class="der-input" type="text" value="2.000">
+            </span>
+        </div>
+        <div class="clear"></div>
         <a class="play button">Запустить ►<a>
     </div>
 </body>

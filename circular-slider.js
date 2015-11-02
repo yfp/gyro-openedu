@@ -96,6 +96,61 @@ SOFTWARE.
                     return (Math.round(nth * (360.0 / range)) - 90) % 360;
                 },
             },
+            "Full Circle Right": {
+                drawShape: function(jcsComponents, radius) {
+                    var d = radius * 2;
+                    var rpx = d + "px";
+                    var jcs = jcsComponents.jcs;
+                    var jcsValue = jcsComponents.jcsValue;
+                    var jcsPanel = jcsComponents.jcsPanel;
+
+                    jcs.css({
+                        'width': rpx,
+                        'height': rpx,
+                        'border-radius': rpx
+                    });
+
+                    var pd = d + (radius / 10);
+
+                    jcsPanel.css({
+                        'border-width': (radius / 10) + 'px',
+                        'border-radius': pd + 'px',
+                    });
+
+                    var outerArea = (jcs.outerWidth() - jcs.innerWidth()) + (jcsValue.outerWidth() - jcsValue.innerWidth());
+                    var iRadius = settings.innerCircleRatio * radius;
+                    var corner = radius - iRadius - outerArea / 2;
+                    jcsValue.css({
+                        'width': (iRadius * 2) + "px",
+                        'height': (iRadius * 2) + "px",
+                        'font-size': iRadius / 2 + "px",
+                        'top': corner + "px",
+                        'left': corner + "px",
+                    });
+                },
+                getCenter: function(jcsPosition, jcsRadius) {
+                    return {
+                        x: jcsPosition.left + jcsRadius,
+                        y: jcsPosition.top + jcsRadius,
+                        r: jcsRadius
+                    };
+                },
+                deg2Val: function(deg) {
+                    if (deg < 0 || deg > 359)
+                        throw "Invalid angle " + deg;
+
+                    deg = (deg ) % 360;
+                    return Math.round(deg * (range / 360.0)) + settings.min;
+                },
+                val2Deg: function(value) {
+                    if (value < settings.min || value > settings.max)
+                        throw "Invalid range " + value;
+
+                    var nth = value - settings.min;
+
+                    return (Math.round(nth * (360.0 / range)) ) % 360;
+                },
+            },
             "Half Circle": {
                 drawShape: function(jcsComponents, radius) {
                     var d = radius * 2;
@@ -208,118 +263,6 @@ SOFTWARE.
                     var nth = value - settings.min;
 
                     return (Math.round(nth * (180.0 / range)) + 90) % 360;
-                },
-            },
-
-            "Half Circle Right": {
-                drawShape: function(jcsComponents, radius) {
-                    var d = radius * 2;
-                    var jcs = jcsComponents.jcs;
-                    var jcsValue = jcsComponents.jcsValue;
-                    var jcsPanel = jcsComponents.jcsPanel;
-
-                    jcs.css({
-                        'height': d + "px",
-                        'width': radius + "px",
-                        'border-radius': "0 " + d + "px " + d + "px 0",
-                        'border-left': 'none'
-                    });
-
-                    var pd = d + (radius / 10);
-
-                    jcsPanel.css({
-                        'border-width': (radius / 10) + 'px',
-                        'border-radius': "0 " + pd + "px" + pd + "px 0",
-                        'border-left': 'none'
-                    });
-
-                    var outerArea = (jcs.outerWidth() - jcs.innerWidth()) + (jcsValue.outerWidth() - jcsValue.innerWidth());
-                    var iRadius = settings.innerCircleRatio * radius;
-                    var corner = radius - iRadius - outerArea / 2;
-                    jcsValue.css({
-                        'width': (iRadius * 2) + "px",
-                        'height': (iRadius * 2) + "px",
-                        'font-size': iRadius / 2 + "px",
-                        'top': corner + "px",
-                        'left': -corner + "px",
-                    });
-                },
-                getCenter: function(jcsPosition, jcsRadius) {
-                    return {
-                        x: jcsPosition.left,
-                        y: jcsPosition.top + jcsRadius * 2,
-                        r: jcsRadius * 2
-                    };
-                },
-                deg2Val: function(deg) {
-                    if (deg < 0 || deg > 359)
-                        throw "Invalid angle " + deg;
-
-                    deg = (deg + 90) % 360;
-                    return Math.round(deg * (range / 180.0)) + settings.min;
-                },
-                val2Deg: function(value) {
-                    if (value < settings.min || value > settings.max)
-                        throw "Invalid range " + value;
-
-                    var nth = value - settings.min;
-
-                    return (Math.round(nth * (180.0 / range)) - 90) % 360;
-                },
-            },
-            "Half Circle Bottom": {
-                drawShape: function(jcsComponents, radius) {
-                    var d = radius * 2;
-                    var jcs = jcsComponents.jcs;
-                    var jcsValue = jcsComponents.jcsValue;
-                    var jcsPanel = jcsComponents.jcsPanel;
-
-                    jcs.css({
-                        'width': d + "px",
-                        'height': radius + "px",
-                        'border-radius': "0 0 " + d + "px " + d + "px",
-                        'border-top': 'none'
-                    });
-
-                    var pd = d + (radius / 10);
-
-                    jcsPanel.css({
-                        'border-width': (radius / 10) + 'px',
-                        'border-radius': "0 0 " + pd + "px " + pd + "px",
-                        'border-top': 'none'
-                    });
-
-                    var outerArea = (jcs.outerWidth() - jcs.innerWidth()) + (jcsValue.outerWidth() - jcsValue.innerWidth());
-                    var iRadius = settings.innerCircleRatio * radius;
-                    var corner = radius - iRadius - outerArea / 2;
-                    jcsValue.css({
-                        'width': (iRadius * 2) + "px",
-                        'height': (iRadius * 2) + "px",
-                        'font-size': iRadius / 2 + "px",
-                        'top': -corner + "px",
-                        'left': corner + "px",
-                    });
-                },
-                getCenter: function(jcsPosition, jcsRadius) {
-                    return {
-                        x: jcsPosition.left + jcsRadius,
-                        y: jcsPosition.top,
-                        r: jcsRadius
-                    };
-                },
-                deg2Val: function(deg) {
-                    if (deg < 0 || deg > 359)
-                        throw "Invalid angle " + deg;
-
-                    return Math.round(deg * (range / 180.0)) + settings.min;
-                },
-                val2Deg: function(value) {
-                    if (value < settings.min || value > settings.max)
-                        throw "Invalid range " + value;
-
-                    var nth = value - settings.min;
-
-                    return Math.round(nth * (180.0 / range));
                 },
             }
         };
@@ -589,7 +532,7 @@ SOFTWARE.
             jcsIndicator.css('left', x + "px");
             jcsValue.html(buildLabel(value));
 
-            if (settings.slide && $.isFunction(settings.slide)) settings.slide(slider, val);
+            if (settings.slide && $.isFunction(settings.slide)) settings.slide(slider, value);
 
         };
 
@@ -708,6 +651,7 @@ SOFTWARE.
         }
 
         if (!settings.selectable) jcsPanel.addClass('noselect');
+
 
         // default position
         setValue(settings.value || settings.min);

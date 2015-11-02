@@ -14,7 +14,43 @@
 }
 
 .knob{
-	float: left;
+	/*float: left;*/
+	margin: 0px 12px;
+	height: 120px;
+}
+
+.knob-index{
+	position: absolute;
+	/*font-style: italic;*/
+	top: 0px;
+	left: 18px;
+}
+
+.der-input{
+	display: inline;
+	width: 65px;
+	margin-left: 0px;
+	padding-left: 3px;
+	height: 20px;
+	font-size: 16px;
+}
+
+.der{
+	margin-left: 20px;
+}
+
+.column{
+	float:left;
+	width: 133px;
+	position: relative;
+}
+
+.clear{
+	clear: both;
+}
+
+h3{
+	text-align: center;
 }
 
 a.button{
@@ -31,7 +67,7 @@ a.button{
 	border:1px solid #a7a7a7;
 	width: 120px;
 	margin: 10px;
-	margin-top:120px;
+	margin-top:10px;
 	cursor: pointer;
 	box-shadow: 0px 2px 1px white inset, 0px -2px 8px white, 0px 2px 5px rgba(0, 0, 0, 0.1), 0px 8px 10px rgba(0, 0, 0, 0.1);
 	-webkit-transition:box-shadow 0.5s;

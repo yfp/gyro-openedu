@@ -1,6 +1,34 @@
+THREE.Quaternion.prototype.addQuaternion = (q, b=1)->
+  new THREE.Quaternion(
+    @.x+q.x * b
+    @.y+q.y * b
+    @.z+q.z * b
+    @.w+q.w * b
+  )
+
+THREE.Vector3.prototype.addVector3 = (v, b=1)->
+  new THREE.Vector3(
+    @.x+v.x * b
+    @.y+v.y * b
+    @.z+v.z * b
+  )
+
+lsum = (vec1, vec2, k1=1) ->
+  vec1.map (e, i) -> vec1[i]*k1 + vec2[i]
+
+stepRungeKutta = (vec, func, t, dt) ->
+  k1 = func( t,      vec                )
+  k2 = func( t+dt/2, lsum(k1, vec, dt/2) )
+  k3 = func( t+dt/2, lsum(k2, vec, dt/2) )
+  k4 = func( t+dt,   lsum(k3, vec, dt)   )
+
+  vec.map (e, i) ->
+    e + dt*((k1[i]+k4[i])/6 + (k2[i]+k3[i])/3)
+
 Gyro = do ->
   $(()->
     pi = Math.PI
+    degree = pi/180
     width = 400
     height = 400
     container = undefined
@@ -16,6 +44,8 @@ Gyro = do ->
     selectedMaterial = undefined
     controls = undefined
     model = undefined
+    line = undefined
+    MAX_POINTS = 5000
 
     simulationState = off
     rotationVelocity = {
@@ -24,18 +54,34 @@ Gyro = do ->
       rotation: 400
     }
 
-    precession = {id: 'precession', value: 20}
-    nutation   = {id: 'nutation', value: 45}
-    rotation   = {id: 'rotation', value: 0}
+    omega = new THREE.Vector3(0, 0, 5)
+    weight = 10
 
-    console.log 'loaded'
-    [precession, nutation, rotation].map (s) ->
-      s.slider = $('#'+s.id).CircularSlider
-        radius: 50
-        animate: off
-        value: s.value
-        slide: (ui, value) ->
-          s.value = value
+    gyroGeometry = {
+      angle: 36*degree
+      length: 150
+      centerMass: 100
+      cubesSize: 30
+    }
+
+    precession = {id: 'precession', value: 0}
+    nutation   = {id: 'nutation', value: 36}
+    rotation   = {id: 'rotation', value: 0}
+    precessionDot = {id: 'precession', value: 0}
+    nutationDot   = {id: 'nutation', value: 0}
+    rotationDot   = {id: 'rotation', value: 3.0}
+
+    max_nutation = 72*degree
+
+    J = {
+      A: 7
+      B: 7
+      C: 10
+    }
+    J.CB = J.C - J.B
+    J.BA = J.B - J.A
+    J.AC = J.A - J.C
+
 
     # Revolutions per second
     angularSpeed = 0
@@ -47,6 +93,35 @@ Gyro = do ->
     # Establish a channel only if this application is embedded in an iframe.
     # This will let the parent window communicate with this application using
     # RPC and bypass SOP restrictions.
+
+    updateInitialConditions = () ->
+      [sin,cos] = [Math.sin, Math.cos]
+      psi   = precession.value*degree
+      theta = nutation.value*degree
+      phi   = rotation.value*degree
+      
+      psid   = precessionDot.value
+      thetad = nutationDot.value
+      phid   = rotationDot.value
+
+      omega.x = psid * sin(theta)*sin(phi) + thetad * cos(phi)
+      omega.y = psid * sin(theta)*cos(phi) - thetad * sin(phi)
+      omega.z = psid * cos(theta) + phid
+
+      console.log "updated", omega
+
+      q = new THREE.Quaternion()
+      qaa = (x, y, z, a) ->
+        new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(x,y,z), a )
+      q.multiply qaa(0,0,1, psi)
+      q.multiply qaa(1,0,0, theta)
+      q.multiply qaa(0,0,1, phi)
+      model.quaternion.copy q
+      model.position.z = Math.cos(theta) * gyroGeometry.centerMass
+
+    stopSimulation = () ->
+      simulationState = off
+      $(".play.on").toggleClass "on"
 
     init = ->
       container = document.getElementById('container')
@@ -90,7 +165,7 @@ Gyro = do ->
       camera.lookAt new (THREE.Vector3)(0, 0, 0)
       camera.updateProjectionMatrix()
 
-      controls = new THREE.TrackballControls( camera );
+      controls = new THREE.TrackballControls( camera, container );
 
       controls.rotateSpeed = 1.0;
       controls.zoomSpeed = 1.2;
@@ -126,17 +201,19 @@ Gyro = do ->
       # gyroscope model
       model = new THREE.Group()
       do ->
-        cone_height = 100
-        cone_radius = 30
-        geometry = new THREE.CylinderGeometry cone_radius, 5, cone_height,radiusSegments,heightSegments
+        cone_height = gyroGeometry.length*Math.cos gyroGeometry.angle/2
+        cone_radius = gyroGeometry.length*Math.sin gyroGeometry.angle/2
+        shift = gyroGeometry.centerMass
+        geometry = new THREE.CylinderGeometry cone_radius, 0, cone_height,radiusSegments,heightSegments
         cone = new THREE.Mesh geometry, unselectedMaterial
         cone.rotation.x = pi/2
-        cone.position.z = cone_height/2
+        cone.position.z = cone_height/2 - shift
         model.add cone
-        geometry = new THREE.CubeGeometry 20, 20, 20
+        size = gyroGeometry.cubesSize
+        geometry = new THREE.CubeGeometry size, size, size
         [0,1,2,3].map (i) ->
           cubic = new THREE.Mesh geometry, unselectedMaterial
-          cubic.position.z = cone_height
+          cubic.position.z = cone_height - shift
           cubic.position.x = cone_radius * Math.cos pi*i/2
           cubic.position.y = cone_radius * Math.sin pi*i/2
           model.add cubic
@@ -149,13 +226,33 @@ Gyro = do ->
         plane = new THREE.Mesh( geometry, material )
         scene.add plane
 
-      # Cube
-      cube = new (THREE.Mesh)(new (THREE.CubeGeometry)(100, 150, 200), unselectedMaterial)
-      cube.position.x = 0
-      cube.overdraw = true
-      # cube.omega = new THREE.Vector3(0,0,0.1);
-      cube.quaternion.setFromAxisAngle new (THREE.Vector3)(1, 1, 1), Math.PI / 3
-      # scene.add cube
+      do ->
+        geometry = new THREE.BufferGeometry()
+        positions = new Float32Array( MAX_POINTS * 3 )
+        geometry.addAttribute 'position', new THREE.BufferAttribute( positions, 3 )
+        geometry.attributes.position.len = 0
+
+        geometry.setDrawRange( 0, 0 )
+
+        material = new THREE.LineBasicMaterial {color: 0xDF4949, linewidth: 2}
+        line = new THREE.Line(geometry, material)
+        
+        x = y = z = index = 0
+
+        for i in [0..MAX_POINTS]
+          positions[ index ] = x
+          index++
+          positions[ index ] = y
+          index++
+          positions[ index ] = 0
+          index++
+
+          x += ( Math.random() - 0.5 ) * 30
+          y += ( Math.random() - 0.5 ) * 30
+          z += ( Math.random() - 0.5 ) * 30
+      scene.add line
+
+
       # Ambient light
       ambientLight = new (THREE.AmbientLight)(0x222222)
       scene.add ambientLight
@@ -164,76 +261,128 @@ Gyro = do ->
       directionalLight.position.set(1, 1, 1).normalize()
       scene.add directionalLight
       # Used to select element with mouse click
-      # projector = new (THREE.Projector)
-      # renderer.domElement.addEventListener 'click', onMouseClick, false
       $('.play').click (el) ->
-        console.log 'hello'
+        console.log 'Clicked'
         $(@).toggleClass 'on'
         simulationState = $(@).hasClass 'on'
+        if simulationState == on
+          line.geometry.setDrawRange( 0, 0 )
+          line.geometry.attributes.position.len = 0
 
-      # Start animation
+      console.log 'loaded'
+      [precession, nutation, rotation].map (s) ->
+        s.slider = $('#'+s.id+' .knob').CircularSlider
+          radius: 50
+          animate: off
+          value: s.value
+          shape: if s.id == 'nutation' then 'Half Circle' else 'Full Circle Right'
+          max:   if s.id == 'nutation' then 179
+          clockwise: off
+          slide: (ui, value) ->
+            s.value = value
+            updateInitialConditions()
+
+      [precessionDot, nutationDot, rotationDot].map (s)->
+        $el = $('#'+s.id+' .der-input')
+        s.value = parseFloat $el.val()
+        $el.on 'change', (el) ->
+          s.value = parseFloat $el.val()
+          updateInitialConditions()
+          console.log s.id, s.value, $el.val()
+      
+      updateInitialConditions()
+
       render()
       animate()
       return
 
-    # This function is executed on each animation frame
-
     animate = ->
-      # Request new frame
       requestAnimationFrame animate
       controls.update()
       render()
       return
+    
+    getDerivative = (t, [w,x,y,z,p,q,r], [mx,my,mz]) ->
+      [wx, wy, wz, xy, yz, xz, w2, x2, y2, z2] = [w*x, w*y, w*z, x*y, y*z, x*z, w*w, x*x, y*y, z*z]
+      qs = w2 - x2 - y2 - z2
+      M = [
+        -my*w2 - 2*mz*wx + my*x2 - 2*mx*xy - my*y2 + 2*mx*wz - 2*mz*yz + my*z2
+        mx*w2  + mx*x2 - 2*mz*wy + 2*my*xy - mx*y2 + 2*my*wz + 2*mz*xz - mx*z2
+        0
+      ]
+      pqrd = [
+        ( M[0] - J.CB * q * r )/J.A
+        ( M[1] - J.AC * r * p )/J.B
+        ( M[2] - J.BA * p * q )/J.C
+      ]
 
+      quatd = [
+        -(p*x + q*y + r*z)/2.0,
+        (p*w + r*y - q*z)/2.0,
+        (q*w - r*x + p*z)/2.0,
+        (r*w + q*x - p*y)/2.0
+      ]
+      [quatd[0], quatd[1], quatd[2], quatd[3],   pqrd[0], pqrd[1], pqrd[2]]
+      
     render = ->
-      # Update
       time = (new Date).getTime()
-      timeDiff = time - lastTime
+      dt = (time - lastTime) / 1000
       rotationVelocity.precession = 90 * Math.abs( Math.sin pi*nutation.value/180)
       if simulationState
-        [precession, nutation, rotation].map (e) ->
-          e.value += rotationVelocity[e.id] * timeDiff / 1000
-          e.value = (e.value+360) % 360
-          e.slider.setValue Math.floor(e.value)
+        [w, x, y, z, p, q, r] = stepRungeKutta [
+          model.quaternion.w
+          model.quaternion.x
+          model.quaternion.y
+          model.quaternion.z
+          omega.x
+          omega.y
+          omega.z
+          ], ( (t,v) -> getDerivative(t,v,[0,0,-weight]) ), time, dt
+        
+        omega.fromArray [p,q,r]
+        model.quaternion.fromArray([x,y,z,w]).normalize()
+
+
+        cosAngle = w*w - x*x - y*y + z*z
+        model.position.z = cosAngle * gyroGeometry.centerMass
+        nutAngle = Math.acos(cosAngle)
+        psiAngle = Math.atan2 w*y+x*z, w*x-y*z
+        proj = gyroGeometry.centerMass*Math.sin nutAngle
+        console.log nutAngle/degree, psiAngle/degree
+        vert = [ -proj*Math.sin(psiAngle), proj*Math.cos(psiAngle), 0 ]
+
+        pos = line.geometry.attributes.position
+
+        if pos.len < MAX_POINTS
+          i = pos.len
+          pos.array[3*i+0] = vert[0]
+          pos.array[3*i+1] = vert[1]
+          pos.array[3*i+2] = vert[2]
+          pos.len += 1
+          console.log pos.len
+          line.geometry.setDrawRange 0, i+1
+          line.geometry.attributes.position.needsUpdate = true
+        else
+          stopSimulation()
+
+        if nutAngle > max_nutation
+          stopSimulation()
+          alert "У вас упало"
+
+      # else
+      #   q = new THREE.Quaternion()
+      #   qaa = (x, y, z, a) ->
+      #     new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(x,y,z), a )
+      #   q.multiply qaa(0,0,1, Math.PI*precession.value/180)
+      #   q.multiply qaa(1,0,0, Math.PI*nutation.value/180)
+      #   q.multiply qaa(0,0,1, Math.PI*rotation.value/180)
+      #   model.quaternion.copy q
+      #   model.position.z = Math.cos(nutation.value*degree) * gyroGeometry.centerMass
+
       lastTime = time
 
-      q = new THREE.Quaternion()
-      qaa = (x, y, z, a) ->
-        new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(x,y,z), a )
-      q.multiply qaa(0,0,1, Math.PI*precession.value/180)
-      q.multiply qaa(1,0,0, Math.PI*nutation.value/180)
-      q.multiply qaa(0,0,1, Math.PI*rotation.value/180)
-      # euler = new THREE.Euler( \
-      #   Math.PI*precession.value/360, \
-      #   Math.PI*nutation.value/360, \
-      #   Math.PI*rotation.value/360, \
-      #   'XYZ' )
-            
-      # console.log euler
-      model.quaternion.copy q
-
-      # Render
       renderer.render scene, camera
       return
-
-    onMouseClick = (event) ->
-      # mouse = {
-      #   x:   ( event.clientX / window.innerWidth  ) * 2 - 1
-      #   y: - ( event.clientY / window.innerHeight ) * 2 + 1
-      # }
-      # raycaster.setFromCamera( mouse, camera );
-
-      # intersects = raycaster.intersectObjects(scene.children, true)
-
-      # console.log intersects, model.children
-      # if intersects.length > 0
-      #   if intersects[0].object == model
-      #     state.selectedObjects.cube = !state.selectedObjects.cube
-      #     if angularSpeed > 0
-      #       angularSpeed = 0
-      #     else
-      #       angularSpeed = 200
-      #   updateMaterials()
 
     updateMaterials = ->
       material = if state.selectedObjects.cube
