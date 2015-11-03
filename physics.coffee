@@ -77,12 +77,12 @@ Gyro = do ->
     gyroGeometry = {
       angle: 36*degree
       length: 150
-      centerMass: 100
+      centerMass: 113.8
       cubesSize: 30
     }
 
     precession = {id: 'precession', value: 0}
-    nutation   = {id: 'nutation', value: 36}
+    nutation   = {id: 'nutation', value: 0}
     rotation   = {id: 'rotation', value: 0}
     precessionDot = {id: 'precession', value: 0}
     nutationDot   = {id: 'nutation', value: 0}
@@ -179,7 +179,7 @@ Gyro = do ->
       camera.position.y = 400
       camera.position.z = 200
       camera.up.set 0, 0, 1
-      camera.lookAt new (THREE.Vector3)(0, 0, 0)
+      camera.lookAt new THREE.Vector3(0, 0, 200)
       camera.updateProjectionMatrix()
 
       controls = new THREE.TrackballControls( camera, container );
@@ -225,7 +225,7 @@ Gyro = do ->
         cone = new THREE.Mesh geometry, unselectedMaterial
         cone.rotation.x = pi/2
         cone.position.z = cone_height/2 - shift
-        model.add cone
+        # model.add cone
         size = gyroGeometry.cubesSize
         geometry = new THREE.CubeGeometry size, size, size
         [0,1,2,3].map (i) ->
@@ -233,7 +233,29 @@ Gyro = do ->
           cubic.position.z = cone_height - shift
           cubic.position.x = cone_radius * Math.cos pi*i/2
           cubic.position.y = cone_radius * Math.sin pi*i/2
-          model.add cubic
+          # model.add cubic
+      
+
+      manager = new THREE.LoadingManager()
+      manager.onProgress = ( item, loaded, total ) ->
+        console.log( item, loaded, total )
+      onProgress = ( xhr ) ->
+        if xhr.lengthComputable
+          percentComplete = xhr.loaded / xhr.total * 100
+          console.log Math.round(percentComplete, 2) + '% downloaded'
+      onError = (xhr) -> xhr
+
+      loader = new THREE.OBJLoader(manager)
+      loader.load( 'gyro.obj', ( object ) ->
+        object.traverse ( child ) ->
+          if child instanceof THREE.Mesh
+            child.material = unselectedMaterial
+        object.rotation.x = pi/2
+        object.scale.set(14,14,14)
+        object.position.z += 113.8
+        object.position.z -= gyroGeometry.centerMass
+        model.add( object )
+      , onProgress, onError )
       scene.add model
 
       # plane

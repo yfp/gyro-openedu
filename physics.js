@@ -83,7 +83,7 @@ Gyro = (function() {
     gyroGeometry = {
       angle: 36 * degree,
       length: 150,
-      centerMass: 100,
+      centerMass: 113.8,
       cubesSize: 30
     };
     precession = {
@@ -92,7 +92,7 @@ Gyro = (function() {
     };
     nutation = {
       id: 'nutation',
-      value: 36
+      value: 0
     };
     rotation = {
       id: 'rotation',
@@ -155,7 +155,7 @@ Gyro = (function() {
       return $(".play.on").toggleClass("on");
     };
     init = function() {
-      var ambientLight, contextNames, e, heightSegments, i, radiusSegments, testCanvas, webglContext;
+      var ambientLight, contextNames, e, heightSegments, i, loader, manager, onError, onProgress, radiusSegments, testCanvas, webglContext;
       container = document.getElementById('container');
       testCanvas = document.createElement('canvas');
       webglContext = null;
@@ -194,7 +194,7 @@ Gyro = (function() {
       camera.position.y = 400;
       camera.position.z = 200;
       camera.up.set(0, 0, 1);
-      camera.lookAt(new THREE.Vector3(0, 0, 0));
+      camera.lookAt(new THREE.Vector3(0, 0, 200));
       camera.updateProjectionMatrix();
       controls = new THREE.TrackballControls(camera, container);
       controls.rotateSpeed = 1.0;
@@ -232,7 +232,6 @@ Gyro = (function() {
         cone = new THREE.Mesh(geometry, unselectedMaterial);
         cone.rotation.x = pi / 2;
         cone.position.z = cone_height / 2 - shift;
-        model.add(cone);
         size = gyroGeometry.cubesSize;
         geometry = new THREE.CubeGeometry(size, size, size);
         return [0, 1, 2, 3].map(function(i) {
@@ -240,10 +239,36 @@ Gyro = (function() {
           cubic = new THREE.Mesh(geometry, unselectedMaterial);
           cubic.position.z = cone_height - shift;
           cubic.position.x = cone_radius * Math.cos(pi * i / 2);
-          cubic.position.y = cone_radius * Math.sin(pi * i / 2);
-          return model.add(cubic);
+          return cubic.position.y = cone_radius * Math.sin(pi * i / 2);
         });
       })();
+      manager = new THREE.LoadingManager();
+      manager.onProgress = function(item, loaded, total) {
+        return console.log(item, loaded, total);
+      };
+      onProgress = function(xhr) {
+        var percentComplete;
+        if (xhr.lengthComputable) {
+          percentComplete = xhr.loaded / xhr.total * 100;
+          return console.log(Math.round(percentComplete, 2) + '% downloaded');
+        }
+      };
+      onError = function(xhr) {
+        return xhr;
+      };
+      loader = new THREE.OBJLoader(manager);
+      loader.load('gyro.obj', function(object) {
+        object.traverse(function(child) {
+          if (child instanceof THREE.Mesh) {
+            return child.material = unselectedMaterial;
+          }
+        });
+        object.rotation.x = pi / 2;
+        object.scale.set(14, 14, 14);
+        object.position.z += 113.8;
+        object.position.z -= gyroGeometry.centerMass;
+        return model.add(object);
+      }, onProgress, onError);
       scene.add(model);
       (function() {
         var geometry, material, plane;
