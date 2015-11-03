@@ -92,7 +92,7 @@ Gyro = (function() {
     };
     nutation = {
       id: 'nutation',
-      value: 0
+      value: 36
     };
     rotation = {
       id: 'rotation',

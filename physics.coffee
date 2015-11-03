@@ -82,7 +82,7 @@ Gyro = do ->
     }
 
     precession = {id: 'precession', value: 0}
-    nutation   = {id: 'nutation', value: 0}
+    nutation   = {id: 'nutation', value: 36}
     rotation   = {id: 'rotation', value: 0}
     precessionDot = {id: 'precession', value: 0}
     nutationDot   = {id: 'nutation', value: 0}
