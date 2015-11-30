@@ -6,12 +6,15 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
     <script src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script>
     <script type="text/x-mathjax-config">
-    MathJax.Hub.Config({
-      tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}
-    });
+        MathJax.Hub.Config({
+          tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}
+        });
     </script>
     <script src="circular-slider.js"></script>
     <script src="flot/jquery.flot.min.js"></script>
+    <script src="flot/jquery.flot.selection.min.js"></script>
+    <script src="jquery.flot.navigate.js"></script>
+    <script src="flot/jquery.flot.crosshair.min.js"></script>
 
     <script src="jschannel.js"></script>
     <script src="three.min.js"></script>
@@ -20,12 +23,32 @@
 
     <script src="physics.js" defer='defer'></script>
 
+    <svg style="position: absolute; width: 0; height: 0;" width="0" height="0" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <defs>
+    <symbol id="icon-play" viewBox="0 0 1024 1024">
+        <title>play3</title>
+        <path class="path1" d="M192 128l640 384-640 384z"></path>
+    </symbol>
+    <symbol id="icon-pause" viewBox="0 0 1024 1024">
+        <title>pause2</title>
+        <path class="path1" d="M128 128h320v768h-320zM576 128h320v768h-320z"></path>
+    </symbol>
+    <symbol id="icon-stop" viewBox="0 0 1024 1024">
+        <title>stop2</title>
+        <path class="path1" d="M128 128h768v768h-768z"></path>
+    </symbol>
+    </defs>
+    </svg>
+
+
     <!--<script src="controls.js" defer='defer'></script>-->
 </head>
 <body>
-    <div id="container"></div>
+    <div id="viewport"></div>
     <div id="controls">
-        <h3> Начальные условия </h3>
+        <h3>
+            Начальные условия
+        </h3>
         <div class="column" id="precession">
             <span class="knob-index">$\psi$</span>
             <div  class="knob"></div>
@@ -44,13 +67,36 @@
             <span class="knob-index">$\varphi$</span>
             <div class="knob"></div>
             <span class="der">$\dot\varphi$
-                <input class="der-input" type="text" value="2.000">
+                <input class="der-input" type="text" value="5.000">
             </span>
         </div>
         <div class="clear"></div>
-        <a class="play button">Запустить ►<a>
+        <a class="play button">
+            <span id="play">
+                Запустить <svg class="icon icon-play"><use xlink:href="#icon-play"></use></svg>
+            </span>
+            <span id="pause" hidden>
+                Остановить <svg class="icon icon-pause"><use xlink:href="#icon-pause"></use></svg>
+            </span>
+        <a>
     </div>
-    <div id="plot">
-    </div>
+    <div id="plot-container">
+        <div id="plot-placeholder"></div>
+<!--         <div id="crosshair">
+            <div class="theta">
+                <input type="checkbox" />
+                $\theta =$ 0.00000
+            </div>
+            <div class="psi">
+                <input type="checkbox" />
+                $\psi =$ 0.00000
+            </div>
+            <div class="phi">
+                <input type="checkbox" />
+                $\varphi =$ 0.00000
+            </div>
+        </div>
+        <button id="butt">Reset</button>
+ -->    </div>
 </body>
 </html>
