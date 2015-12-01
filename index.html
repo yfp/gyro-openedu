@@ -3,6 +3,7 @@
 <head>
     <link rel="stylesheet" type="text/css" href="gyro.css">
     <link rel="stylesheet" href="circular-slider.css" />
+    <link href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
     <script src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script>
     <script type="text/x-mathjax-config">
@@ -10,7 +11,13 @@
           tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}
         });
     </script>
-    <script src="circular-slider.js"></script>
+    <script src="jschannel.js"></script>
+    <script type="text/javascript">
+        window.module = window.module || {};
+    </script>
+    <script src="composite.min.js"></script>
+
+    <!--<script src="circular-slider.js"></script>
     <script src="flot/jquery.flot.min.js"></script>
     <script src="flot/jquery.flot.selection.min.js"></script>
     <script src="jquery.flot.navigate.js"></script>
@@ -21,29 +28,42 @@
     <script src="objloader.js"></script>
     <script src="trackball_controls.js"></script>
 
-    <script src="physics.js" defer='defer'></script>
-
-    <svg style="position: absolute; width: 0; height: 0;" width="0" height="0" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-    <defs>
-    <symbol id="icon-play" viewBox="0 0 1024 1024">
-        <title>play3</title>
-        <path class="path1" d="M192 128l640 384-640 384z"></path>
-    </symbol>
-    <symbol id="icon-pause" viewBox="0 0 1024 1024">
-        <title>pause2</title>
-        <path class="path1" d="M128 128h320v768h-320zM576 128h320v768h-320z"></path>
-    </symbol>
-    <symbol id="icon-stop" viewBox="0 0 1024 1024">
-        <title>stop2</title>
-        <path class="path1" d="M128 128h768v768h-768z"></path>
-    </symbol>
-    </defs>
-    </svg>
+    <script src="physics.js" defer='defer'></script> 
+    <script src="controls.js" defer='defer'></script>-->
 
 
-    <!--<script src="controls.js" defer='defer'></script>-->
+
+    
 </head>
 <body>
+    <div id="info" class="alert alert-info" hidden>
+        <div class="close-div">
+            <span class="close-btn glyphicon glyphicon-remove"></span>
+        </div>
+        <h5>Информация</h5>
+        <p>
+            <i>Слева сверху</i> расположено окно с изображением волчка.
+            Удерживая левую кнопку мыши можно вращать угол зрения камеры.
+            При помощи колёсика осуществляется приближение и отдаление камеры (зум).
+            Кнопка «Начальный вид» возвращает камеру в первоначальное положение.
+        </p>
+        
+        <p>
+            <i>Справа сверху</i> расположены поля для задания начальных условий.
+            Вращающимися слайдерами задаются начальные углы прецессии, нутации и собственного вращения (в градусах).
+            В полях ниже задаются соответствующие начальные угловые скорости (в рад/с).
+            Кнопка «Запустить» запускает анимацию движения волчка.
+            Кнопка «Заново» приводит параметры волчка к начальным.
+        </p>
+        <p>
+            <i>Снизу</i> расположен график зависимости параметров волчка (углов Эйлера и угловой скорости собственного вращения) от времени.
+            При выделение мышью прямоугольной области графика, происходит приближение в эту область.
+            Приближение отдаление графика также возможно при помощи колёсика мыши.
+            При наведении курсором на график справа сверху показываются значение параметров волчка при данном времени.
+        </p>
+
+
+    </div>
     <div id="viewport"></div>
     <div id="controls">
         <h3>
@@ -71,32 +91,37 @@
             </span>
         </div>
         <div class="clear"></div>
-        <a class="play button">
-            <span id="play">
-                Запустить <svg class="icon icon-play"><use xlink:href="#icon-play"></use></svg>
-            </span>
-            <span id="pause" hidden>
-                Остановить <svg class="icon icon-pause"><use xlink:href="#icon-pause"></use></svg>
-            </span>
-        <a>
+        <div class="control-buttons">
+            <button type="button" class="btn btn-default default-view">
+                Начальный вид
+                <span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>
+            </button>
+            <!-- <br/> -->
+            <div class="btn-group" aria-label="...">
+                <button type="button" class="btn btn-default reset">
+                    Заново
+                    <span class="glyphicon glyphicon-step-backward" aria-hidden="true"></span>
+                </button>
+                <button type="button" class="btn btn-default play">
+                    <span id="play">
+                        Запустить <span class="glyphicon glyphicon-play" aria-hidden="true"></span>
+                    </span>
+                    <span id="pause" hidden>
+                        Остановить <span class="glyphicon glyphicon-pause" aria-hidden="true"></span>
+                    </span>
+                </button>
+            </div>
+            <button type="button" class="btn btn-default info">
+                <span class="glyphicon glyphicon-info-sign" aria-hidden="true"></span>
+            </button>
+        </div>
+        <div id="alert-notification" class="alert alert-danger" role="alert" hidden>Волчок упал</div>
     </div>
     <div id="plot-container">
         <div id="plot-placeholder"></div>
-<!--         <div id="crosshair">
-            <div class="theta">
-                <input type="checkbox" />
-                $\theta =$ 0.00000
-            </div>
-            <div class="psi">
-                <input type="checkbox" />
-                $\psi =$ 0.00000
-            </div>
-            <div class="phi">
-                <input type="checkbox" />
-                $\varphi =$ 0.00000
-            </div>
-        </div>
-        <button id="butt">Reset</button>
- -->    </div>
+    </div>
+    <div class="result alert alert-warning">
+        <b>Значения для главных моментов инерции: A = <input id="JA" value="0.0">, C = <input id="JC" value="0.0"></b>
+    </div>
 </body>
 </html>

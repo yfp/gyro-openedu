@@ -35,8 +35,8 @@ SOFTWARE.
                 return;
 
             jcsComponents.jcsIndicator.css({
-                'width': (radius / 5) + "px",
-                'height': (radius / 5) + "px",
+                'width': (radius / 3) + "px",
+                'height': (radius / 3) + "px",
             });
         };
 
@@ -270,7 +270,7 @@ SOFTWARE.
         var defaults = {
             radius: 75,
             innerCircleRatio: '0.5',
-            handleDist : 100,
+            handleDist : 70,
             min: 0,
             max: 359,
             value: 0,

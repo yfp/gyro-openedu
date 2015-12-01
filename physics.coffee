@@ -39,7 +39,7 @@ do ->
 
   #Container parameters
   viewportId = 'viewport'
-  [width, height] = [400, 300]
+  [width, height] = [350, 300]
   renderer = controls = undefined
 
 
@@ -155,8 +155,6 @@ do ->
 
     phidot = omega.z - ( omega.x*Math.sin(phiAngle) + omega.y*Math.cos(phiAngle) )/Math.tan(nutAngle)
 
-    console.log phidot
-
 
   initModels = (webglContext = yes) ->
     # Materials
@@ -204,11 +202,11 @@ do ->
 
   pushButton = (state) ->
     if state == on
-      $button.addClass 'on'
+      # $button.addClass 'on'
       $playString.hide()
       $pauseString.show()
     else
-      $button.removeClass 'on'
+      # $button.removeClass 'on'
       $pauseString.hide()
       $playString.show()
 
@@ -217,7 +215,7 @@ do ->
     simulationState = on
     pushButton on
     startTime = (new Date).getTime()
-    console.log startTime
+    $('#alert-notification').hide()
     line.geometry.setDrawRange 0, 0
     line.geometry.attributes.position.len = 0
     for k, v of plotData
@@ -236,7 +234,9 @@ do ->
     plotOptions = undefined
     plotDataArray = []
     plotLegend = undefined
-    nutData = []    
+    # plotLegendRef = undefined
+    nutData = []
+    timeElement = undefined
 
     lastTime = 0
     state = 'selectedObjects':
@@ -248,6 +248,9 @@ do ->
     # RPC and bypass SOP restrictions.
 
     plotRedrawAxes = (redraw = false) ->
+      plotOptions.xaxis.min = plotOptions.yaxis.min = 0
+      plotOptions.xaxis.max = 10
+      plotOptions.yaxis.max = 30
       plotDataArray.map (data) ->
         data.data.map ([x,y])->
           if x < plotOptions.xaxis.min
@@ -265,17 +268,20 @@ do ->
       if redraw
         plot = $.plot '#plot-placeholder', plotDataArray, plotOptions
         if plotLegend
-          $("#plot-placeholder .legend").replaceWith(plotLegend)
-          # console.log "finished"
-          MathJax.Hub.Queue ["Typeset", MathJax.Hub], ()->
-            for key, series of plotData
-              console.log "span##{key} span.mn:contains('0.00000')"
-              series.legendElement = plotLegend.find("span##{key} span.mn:contains('0.00000')")
+          plotLegendClone = plotLegend.clone()
+          $("#plot-placeholder .legend").replaceWith plotLegendClone
+          timeElement = plotLegendClone.find("span#time span.digits")
+          for key, series of plotData
+            series.legendElement = plotLegendClone.find("span##{key} span.digits")
+          
+          # MathJax.Hub.Queue ["Typeset", MathJax.Hub], ()->
+          #   for key, series of plotData
+          #     # console.log "span##{key} span.mn:contains('0.00000')"
+          #     series.legendElement = plotLegend.find("span##{key} span.mn:contains('0.00000')")
 
 
     plotInit = () ->
-      plotDataArray = [plotData.theta, plotData.psi, plotData.phi, plotData.phidot]
-      console.log plotDataArray
+      plotDataArray = [plotData.psi, plotData.theta, plotData.phi, plotData.phidot]
       plotOptions =
         legend:
           show: yes
@@ -310,19 +316,26 @@ do ->
             ]
           draw: [
             (p, context) ->
-              if not plotLegend
-                ll = $('#plot-placeholder .legend')
-                MathJax.Hub.Typeset(ll.get()[0])
-                plotLegend = ll.clone()
-                # console.log plotLegend.find("span#theta span:contains('0.00000')")
+              unless plotLegend
+                plotLegend = $('#plot-placeholder .legend').clone()
+                plotLegend.find('table').css({right:'30px'}).prepend """
+                  <tr>
+                    <td></td>
+                    <td><span id="time">$t=0.00000$</span></td>
+                  </tr>
+                """
+                plotLegend.children('div').css {height:'98px', width:'114px'}
+                MathJax.Hub.Queue ["Typeset", MathJax.Hub, plotLegend.get()[0]], ()->
+                  plotLegend.find("span#time span.mn:contains('0.00000')").addClass('digits')
+                  for key, series of plotData
+                    plotLegend.find("span##{key} span.mn:contains('0.00000')").addClass('digits')
+                    # console.log plotLegend.find("span##{key} span.mn:contains('0.00000')")
 
-                # console.log plotLegend.html()
             ]
 
-      plotRedrawAxes(true)
+      plotRedrawAxes yes
 
       $("#plot-placeholder").bind "plotselected",  (event, ranges) ->
-        console.log 'selected'
         if (ranges.xaxis.to - ranges.xaxis.from < 0.00001)
           ranges.xaxis.to = ranges.xaxis.from + 0.00001
         if (ranges.yaxis.to - ranges.yaxis.from < 0.00001)
@@ -331,7 +344,7 @@ do ->
           $.extend true, {}, plotOptions,
             xaxis: { min: ranges.xaxis.from, max: ranges.xaxis.to }
             yaxis: { min: ranges.yaxis.from, max: ranges.yaxis.to }
-        $("#plot-placeholder .legend").replaceWith(plotLegend)
+        $("#plot-placeholder .legend").replaceWith plotLegend
       
       updateLegendTimeout = latestPosition = null
       
@@ -345,8 +358,10 @@ do ->
             pos.y < axes.yaxis.min || pos.y > axes.yaxis.max
           return
 
-        
+        x = 0
         for key, series of plotData
+          if not series.data
+            break
           if series.data.length == 0
             break
           if pos.x < series.data[0][0]
@@ -362,8 +377,8 @@ do ->
             x = pos.x
             y = p1[1] + (p2[1] - p1[1]) * (x - p1[0]) / (p2[0] - p1[0])
             
-            series.legendElement.text( y.toFixed(4) )
-                
+          series.legendElement.text( y.toFixed(4) )
+        timeElement.text( x.toFixed(4) )
 
       $("#plot-placeholder").bind "plothover", (event, pos, item) ->
         latestPosition = pos
@@ -373,6 +388,13 @@ do ->
       # $('#butt').click ()->
       #   console.log 'click'
       #   plot = $.plot "#plot-placeholder", startData, options
+    initCamera = (camera) ->
+      camera.position.x = 400
+      camera.position.y = 400
+      camera.position.z = 200
+      camera.up.set 0, 0, 1
+      camera.lookAt new THREE.Vector3(0, 0, 200)
+      camera.updateProjectionMatrix()
 
     init = ->
       container = document.getElementById viewportId
@@ -409,12 +431,7 @@ do ->
       scene = new (THREE.Scene)
       # Camera
       camera = new (THREE.PerspectiveCamera)(45, width / height, 1, 1000)
-      camera.position.x = 400
-      camera.position.y = 400
-      camera.position.z = 200
-      camera.up.set 0, 0, 1
-      camera.lookAt new THREE.Vector3(0, 0, 200)
-      camera.updateProjectionMatrix()
+      initCamera camera
 
       controls = new THREE.TrackballControls( camera, container );
 
@@ -444,10 +461,8 @@ do ->
       # Used to select element with mouse click
 
 
-      $button = $('.play')
+      $button = $('button.play')
       $button.click (el) ->
-        console.log 'Clicked'
-        # simulationState = $(@).hasClass 'on'
         if simulationState == on
           stopSimulation()
         else
@@ -455,7 +470,19 @@ do ->
       $playString  = $('span#play')
       $pauseString = $('span#pause')
 
-      console.log 'loaded'
+      $('button.info').click -> $('#info').toggle()
+      $('.close-btn').click ->  $('#info').hide()
+
+      $('button.reset').click ->
+        line.geometry.setDrawRange 0, 0
+        line.geometry.attributes.position.len = 0
+        for k, v of plotData
+          v.data = []
+        updateInitialConditions()
+
+      $('button.default-view').click ->
+        initCamera camera
+
       [precession, nutation, rotation].map (s) ->
         s.slider = $('#'+s.id+' .knob').CircularSlider
           radius: 50
@@ -546,20 +573,24 @@ do ->
 
         if theta > max_nutation
           stopSimulation()
-          alert "У вас упало"
+          $('#alert-notification').show()
 
       lastTime = time
 
       renderer.render scene, camera
       return
 
-    getGrade = ->
+    window.EDX.getGrade = ->
       # The following return value may or may not be used to grade
       # server-side.
       # If getState and setState are used, then the Python grader also gets
       # access to the return value of getState and can choose it instead to
       # grade.
-      JSON.stringify state['selectedObjects']
+      result = {
+        A: parseFloat $('input#JA').val()
+        C: parseFloat $('input#JC').val()
+      }
+      JSON.stringify result
 
     getState = ->
       JSON.stringify state
@@ -580,7 +611,7 @@ do ->
         window: window.parent
         origin: '*'
         scope: 'JSInput')
-      channel.bind 'getGrade', getGrade
+      channel.bind 'window.EDX.getGrade', getGrade
       channel.bind 'getState', getState
       channel.bind 'setState', setState
     init()

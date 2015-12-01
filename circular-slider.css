@@ -26,8 +26,8 @@ SOFTWARE.
 .jcs {
     position: relative;
     border-style: solid;
-    border-radius: 100%;   
-    border-color: hotpink;
+    border-radius: 100%;
+    border-color: red; 
     -moz-box-sizing: border-box;
          box-sizing: border-box;
     border-width: 5px;
@@ -38,13 +38,13 @@ SOFTWARE.
     position: absolute;
     border-style: none;
     border-radius: 100%;
-	border: 2px solid rgb(236, 248, 212);
-	text-align : center;
-	pointer-events: none;
-	line-height: 4em;
-	color: white;
-	background-color: yellowgreen;
-	outline: none;
+    border: 0px solid rgb(236, 248, 212);
+    text-align : center;
+    pointer-events: none;
+    line-height: 4em;
+    color: white;
+    background-color: #AFD8F8;
+    outline: none;
 }
 
 .jcs-indicator {
@@ -52,11 +52,37 @@ SOFTWARE.
     position: absolute;
     border-radius: 100%;
     background-color: deeppink;
-	border: 1px solid rgb(177, 177, 177);
+    border: 0px;
     -moz-box-sizing: border-box;
          box-sizing: border-box;
     pointer-events : none;
 }
+
+#precession .jcs{
+    border: 5px solid #EDC240;
+}
+
+#nutation .jcs{
+    border: 5px solid #AFD8F8;
+}
+
+#rotation .jcs{
+    border: 5px solid #4DA74D;
+}
+
+#precession .jcs-value, #precession .jcs-indicator {
+    background-color: #EDC240
+}
+
+#nutation .jcs-value, #nutation .jcs-indicator {
+    background-color: #AFD8F8
+}
+
+#rotation .jcs-value, #rotation .jcs-indicator {
+    background-color: #4DA74D
+}
+
+
 .jcs-panel {
     position: relative;
     display: inline-block;

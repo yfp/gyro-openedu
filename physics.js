@@ -48,7 +48,7 @@
   Quaternion = THREE.Quaternion;
   Vector = THREE.Vector3;
   viewportId = 'viewport';
-  ref1 = [400, 300], width = ref1[0], height = ref1[1];
+  ref1 = [350, 300], width = ref1[0], height = ref1[1];
   renderer = controls = void 0;
   scene = camera = model = line = void 0;
   MAX_POINTS = 5000;
@@ -161,8 +161,7 @@
     while (!(phiAngle > 0)) {
       phiAngle += 2 * pi;
     }
-    phidot = omega.z - (omega.x * Math.sin(phiAngle) + omega.y * Math.cos(phiAngle)) / Math.tan(nutAngle);
-    return console.log(phidot);
+    return phidot = omega.z - (omega.x * Math.sin(phiAngle) + omega.y * Math.cos(phiAngle)) / Math.tan(nutAngle);
   };
   initModels = function(webglContext) {
     var gyroMaterial, loader;
@@ -221,11 +220,9 @@
   };
   pushButton = function(state) {
     if (state === true) {
-      $button.addClass('on');
       $playString.hide();
       return $pauseString.show();
     } else {
-      $button.removeClass('on');
       $pauseString.hide();
       return $playString.show();
     }
@@ -235,7 +232,7 @@
     simulationState = true;
     pushButton(true);
     startTime = (new Date).getTime();
-    console.log(startTime);
+    $('#alert-notification').hide();
     line.geometry.setDrawRange(0, 0);
     line.geometry.attributes.position.len = 0;
     results = [];
@@ -250,13 +247,14 @@
     return pushButton(false);
   };
   return $(function() {
-    var animate, channel, getGrade, getState, init, lastTime, nutData, plotDataArray, plotInit, plotLegend, plotOptions, plotRedrawAxes, render, setState, state;
+    var animate, channel, getState, init, initCamera, lastTime, nutData, plotDataArray, plotInit, plotLegend, plotOptions, plotRedrawAxes, render, setState, state, timeElement;
     startTime = (new Date).getTime();
     plot = void 0;
     plotOptions = void 0;
     plotDataArray = [];
     plotLegend = void 0;
     nutData = [];
+    timeElement = void 0;
     lastTime = 0;
     state = {
       'selectedObjects': {
@@ -266,9 +264,13 @@
     };
     channel = void 0;
     plotRedrawAxes = function(redraw) {
+      var key, plotLegendClone, results, series;
       if (redraw == null) {
         redraw = false;
       }
+      plotOptions.xaxis.min = plotOptions.yaxis.min = 0;
+      plotOptions.xaxis.max = 10;
+      plotOptions.yaxis.max = 30;
       plotDataArray.map(function(data) {
         return data.data.map(function(arg) {
           var x, y;
@@ -294,24 +296,21 @@
       if (redraw) {
         plot = $.plot('#plot-placeholder', plotDataArray, plotOptions);
         if (plotLegend) {
-          $("#plot-placeholder .legend").replaceWith(plotLegend);
-          return MathJax.Hub.Queue(["Typeset", MathJax.Hub], function() {
-            var key, results, series;
-            results = [];
-            for (key in plotData) {
-              series = plotData[key];
-              console.log("span#" + key + " span.mn:contains('0.00000')");
-              results.push(series.legendElement = plotLegend.find("span#" + key + " span.mn:contains('0.00000')"));
-            }
-            return results;
-          });
+          plotLegendClone = plotLegend.clone();
+          $("#plot-placeholder .legend").replaceWith(plotLegendClone);
+          timeElement = plotLegendClone.find("span#time span.digits");
+          results = [];
+          for (key in plotData) {
+            series = plotData[key];
+            results.push(series.legendElement = plotLegendClone.find("span#" + key + " span.digits"));
+          }
+          return results;
         }
       }
     };
     plotInit = function() {
       var latestPosition, updateLegend, updateLegendTimeout;
-      plotDataArray = [plotData.theta, plotData.psi, plotData.phi, plotData.phidot];
-      console.log(plotDataArray);
+      plotDataArray = [plotData.psi, plotData.theta, plotData.phi, plotData.phidot];
       plotOptions = {
         legend: {
           show: true
@@ -359,11 +358,25 @@
           ],
           draw: [
             function(p, context) {
-              var ll;
               if (!plotLegend) {
-                ll = $('#plot-placeholder .legend');
-                MathJax.Hub.Typeset(ll.get()[0]);
-                return plotLegend = ll.clone();
+                plotLegend = $('#plot-placeholder .legend').clone();
+                plotLegend.find('table').css({
+                  right: '30px'
+                }).prepend("<tr>\n  <td></td>\n  <td><span id=\"time\">$t=0.00000$</span></td>\n</tr>");
+                plotLegend.children('div').css({
+                  height: '98px',
+                  width: '114px'
+                });
+                return MathJax.Hub.Queue(["Typeset", MathJax.Hub, plotLegend.get()[0]], function() {
+                  var key, results, series;
+                  plotLegend.find("span#time span.mn:contains('0.00000')").addClass('digits');
+                  results = [];
+                  for (key in plotData) {
+                    series = plotData[key];
+                    results.push(plotLegend.find("span#" + key + " span.mn:contains('0.00000')").addClass('digits'));
+                  }
+                  return results;
+                });
               }
             }
           ]
@@ -371,7 +384,6 @@
       };
       plotRedrawAxes(true);
       $("#plot-placeholder").bind("plotselected", function(event, ranges) {
-        console.log('selected');
         if (ranges.xaxis.to - ranges.xaxis.from < 0.00001) {
           ranges.xaxis.to = ranges.xaxis.from + 0.00001;
         }
@@ -392,23 +404,26 @@
       });
       updateLegendTimeout = latestPosition = null;
       updateLegend = function() {
-        var axes, i, j, key, p1, p2, pos, ref3, ref4, ref5, results, series, x, y;
+        var axes, i, j, key, p1, p2, pos, ref3, ref4, ref5, series, x, y;
         updateLegendTimeout = null;
         pos = latestPosition;
         axes = plot.getAxes();
         if (pos.x < axes.xaxis.min || pos.x > axes.xaxis.max || pos.y < axes.yaxis.min || pos.y > axes.yaxis.max) {
           return;
         }
-        results = [];
+        x = 0;
         for (key in plotData) {
           series = plotData[key];
+          if (!series.data) {
+            break;
+          }
           if (series.data.length === 0) {
             break;
           }
           if (pos.x < series.data[0][0]) {
-            results.push((ref3 = series.data[0], x = ref3[0], y = ref3[1], ref3));
+            ref3 = series.data[0], x = ref3[0], y = ref3[1];
           } else if (pos.x > series.data[series.data.length - 1][0]) {
-            results.push((ref4 = series.data[series.data.length - 1], x = ref4[0], y = ref4[1], ref4));
+            ref4 = series.data[series.data.length - 1], x = ref4[0], y = ref4[1];
           } else {
             for (i = j = 0, ref5 = series.data.length; 0 <= ref5 ? j < ref5 : j > ref5; i = 0 <= ref5 ? ++j : --j) {
               if (series.data[i][0] > pos.x) {
@@ -419,10 +434,10 @@
             p2 = series.data[i];
             x = pos.x;
             y = p1[1] + (p2[1] - p1[1]) * (x - p1[0]) / (p2[0] - p1[0]);
-            results.push(series.legendElement.text(y.toFixed(4)));
           }
+          series.legendElement.text(y.toFixed(4));
         }
-        return results;
+        return timeElement.text(x.toFixed(4));
       };
       return $("#plot-placeholder").bind("plothover", function(event, pos, item) {
         latestPosition = pos;
@@ -430,6 +445,14 @@
           return updateLegendTimeout = setTimeout(updateLegend, 50);
         }
       });
+    };
+    initCamera = function(camera) {
+      camera.position.x = 400;
+      camera.position.y = 400;
+      camera.position.z = 200;
+      camera.up.set(0, 0, 1);
+      camera.lookAt(new THREE.Vector3(0, 0, 200));
+      return camera.updateProjectionMatrix();
     };
     init = function() {
       var ambientLight, container, contextNames, directionalLight, e, heightSegments, i, radiusSegments, testCanvas, webglContext;
@@ -467,12 +490,7 @@
       container.appendChild(renderer.domElement);
       scene = new THREE.Scene;
       camera = new THREE.PerspectiveCamera(45, width / height, 1, 1000);
-      camera.position.x = 400;
-      camera.position.y = 400;
-      camera.position.z = 200;
-      camera.up.set(0, 0, 1);
-      camera.lookAt(new THREE.Vector3(0, 0, 200));
-      camera.updateProjectionMatrix();
+      initCamera(camera);
       controls = new THREE.TrackballControls(camera, container);
       controls.rotateSpeed = 1.0;
       controls.zoomSpeed = 1.2;
@@ -489,9 +507,8 @@
       directionalLight = new THREE.DirectionalLight(0xffffff);
       directionalLight.position.set(1, 1, 1).normalize();
       scene.add(directionalLight);
-      $button = $('.play');
+      $button = $('button.play');
       $button.click(function(el) {
-        console.log('Clicked');
         if (simulationState === true) {
           return stopSimulation();
         } else {
@@ -500,7 +517,25 @@
       });
       $playString = $('span#play');
       $pauseString = $('span#pause');
-      console.log('loaded');
+      $('button.info').click(function() {
+        return $('#info').toggle();
+      });
+      $('.close-btn').click(function() {
+        return $('#info').hide();
+      });
+      $('button.reset').click(function() {
+        var k, v;
+        line.geometry.setDrawRange(0, 0);
+        line.geometry.attributes.position.len = 0;
+        for (k in plotData) {
+          v = plotData[k];
+          v.data = [];
+        }
+        return updateInitialConditions();
+      });
+      $('button.default-view').click(function() {
+        return initCamera(camera);
+      });
       [precession, nutation, rotation].map(function(s) {
         return s.slider = $('#' + s.id + ' .knob').CircularSlider({
           radius: 50,
@@ -570,14 +605,19 @@
         }
         if (theta > max_nutation) {
           stopSimulation();
-          alert("У вас упало");
+          $('#alert-notification').show();
         }
       }
       lastTime = time;
       renderer.render(scene, camera);
     };
-    getGrade = function() {
-      return JSON.stringify(state['selectedObjects']);
+    window.EDX.getGrade = function() {
+      var result;
+      result = {
+        A: parseFloat($('input#JA').val()),
+        C: parseFloat($('input#JC').val())
+      };
+      return JSON.stringify(result);
     };
     getState = function() {
       return JSON.stringify(state);
@@ -594,7 +634,7 @@
         origin: '*',
         scope: 'JSInput'
       });
-      channel.bind('getGrade', getGrade);
+      channel.bind('window.EDX.getGrade', getGrade);
       channel.bind('getState', getState);
       channel.bind('setState', setState);
     }
