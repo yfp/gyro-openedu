@@ -183,7 +183,7 @@ Licensed under the MIT License ~ http://threedubmedia.googlecode.com/files/MIT-L
         function bindEvents(plot, eventHolder) {
             var o = plot.getOptions();
             if (o.zoom.interactive) {
-                eventHolder[o.zoom.trigger](onZoomClick);
+                // eventHolder[o.zoom.trigger](onZoomClick);
                 eventHolder.mousewheel(onMouseWheel);
             }
 
