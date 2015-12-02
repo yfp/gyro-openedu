@@ -11,13 +11,13 @@
           tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}
         });
     </script>
-    <script src="jschannel.js"></script>
+    <!--<script src="jschannel.js"></script>
     <script type="text/javascript">
         window.module = window.module || {};
     </script>
-    <script src="composite.min.js"></script>
+    <script src="composite.min.js"></script>-->
 
-    <!--<script src="circular-slider.js"></script>
+    <script src="circular-slider.js"></script>
     <script src="flot/jquery.flot.min.js"></script>
     <script src="flot/jquery.flot.selection.min.js"></script>
     <script src="jquery.flot.navigate.js"></script>
@@ -25,11 +25,12 @@
 
     <script src="jschannel.js"></script>
     <script src="three.min.js"></script>
+    <script src="canvasrenderer.js"></script>
     <script src="objloader.js"></script>
     <script src="trackball_controls.js"></script>
 
     <script src="physics.js" defer='defer'></script> 
-    <script src="controls.js" defer='defer'></script>-->
+    <script src="controls.js" defer='defer'></script>
 
     <script type="text/javascript">
     var EDX = (function() {
@@ -54,11 +55,15 @@
         }
 
         function getGrade() {
-            return JSON.stringify({key1: 123});
+            result = {
+                A: parseFloat( $('input#JA').val() ),
+                C: parseFloat( $('input#JC').val() )
+            }
+            return JSON.stringify( result );
         }
 
         function getState() {
-            return JSON.stringify({key2: 441});
+            return JSON.stringify({});
         }
 
         function setState() {
