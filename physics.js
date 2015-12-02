@@ -247,7 +247,7 @@
     return pushButton(false);
   };
   return $(function() {
-    var animate, channel, getState, init, initCamera, lastTime, nutData, plotDataArray, plotInit, plotLegend, plotOptions, plotRedrawAxes, render, setState, state, timeElement;
+    var animate, channel, init, initCamera, lastTime, nutData, plotDataArray, plotInit, plotLegend, plotOptions, plotRedrawAxes, plotRedrawLegend, render, state, timeElement;
     startTime = (new Date).getTime();
     plot = void 0;
     plotOptions = void 0;
@@ -263,8 +263,19 @@
       }
     };
     channel = void 0;
-    plotRedrawAxes = function(redraw) {
+    plotRedrawLegend = function() {
       var key, plotLegendClone, results, series;
+      plotLegendClone = plotLegend.clone();
+      $("#plot-placeholder .legend").replaceWith(plotLegendClone);
+      timeElement = plotLegendClone.find("span#time span.digits");
+      results = [];
+      for (key in plotData) {
+        series = plotData[key];
+        results.push(series.legendElement = plotLegendClone.find("span#" + key + " span.digits"));
+      }
+      return results;
+    };
+    plotRedrawAxes = function(redraw) {
       if (redraw == null) {
         redraw = false;
       }
@@ -296,15 +307,7 @@
       if (redraw) {
         plot = $.plot('#plot-placeholder', plotDataArray, plotOptions);
         if (plotLegend) {
-          plotLegendClone = plotLegend.clone();
-          $("#plot-placeholder .legend").replaceWith(plotLegendClone);
-          timeElement = plotLegendClone.find("span#time span.digits");
-          results = [];
-          for (key in plotData) {
-            series = plotData[key];
-            results.push(series.legendElement = plotLegendClone.find("span#" + key + " span.digits"));
-          }
-          return results;
+          return plotRedrawLegend();
         }
       }
     };
@@ -400,7 +403,7 @@
             max: ranges.yaxis.to
           }
         }));
-        return $("#plot-placeholder .legend").replaceWith(plotLegend);
+        return plotRedrawLegend();
       });
       updateLegendTimeout = latestPosition = null;
       updateLegend = function() {
@@ -573,6 +576,9 @@
       var dt, i, p, phi, phid, pos, proj, psi, q, r, ref3, ref4, t, theta, time, vert, w, x, y, z;
       time = (new Date).getTime();
       t = (time - startTime) / 1000.0;
+      if (t > 1000) {
+        stopSimulation();
+      }
       dt = (time - lastTime) / 1000;
       if (simulationState) {
         ref3 = stepRungeKutta([model.quaternion.w, model.quaternion.x, model.quaternion.y, model.quaternion.z, omega.x, omega.y, omega.z], (function(t, v) {
@@ -611,38 +617,6 @@
       lastTime = time;
       renderer.render(scene, camera);
     };
-    window.EDX.getGrade = function() {
-      var result;
-      result = {
-        A: parseFloat($('input#JA').val()),
-        C: parseFloat($('input#JC').val())
-      };
-      return JSON.stringify(result);
-    };
-    getState = function() {
-      return JSON.stringify(state);
-    };
-    setState = function() {
-      var stateStr;
-      stateStr = arguments.length === 1 ? arguments[0] : arguments[1];
-      state = JSON.parse(stateStr);
-      updateMaterials();
-    };
-    if (window.parent !== window) {
-      channel = Channel.build({
-        window: window.parent,
-        origin: '*',
-        scope: 'JSInput'
-      });
-      channel.bind('window.EDX.getGrade', getGrade);
-      channel.bind('getState', getState);
-      channel.bind('setState', setState);
-    }
-    init();
-    return {
-      getState: getState,
-      setState: setState,
-      getGrade: getGrade
-    };
+    return init();
   });
 })();

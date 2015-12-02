@@ -247,6 +247,13 @@ do ->
     # This will let the parent window communicate with this application using
     # RPC and bypass SOP restrictions.
 
+    plotRedrawLegend = ->
+      plotLegendClone = plotLegend.clone()
+      $("#plot-placeholder .legend").replaceWith plotLegendClone
+      timeElement = plotLegendClone.find("span#time span.digits")
+      for key, series of plotData
+        series.legendElement = plotLegendClone.find("span##{key} span.digits")
+
     plotRedrawAxes = (redraw = false) ->
       plotOptions.xaxis.min = plotOptions.yaxis.min = 0
       plotOptions.xaxis.max = 10
@@ -267,12 +274,7 @@ do ->
             redraw = yes
       if redraw
         plot = $.plot '#plot-placeholder', plotDataArray, plotOptions
-        if plotLegend
-          plotLegendClone = plotLegend.clone()
-          $("#plot-placeholder .legend").replaceWith plotLegendClone
-          timeElement = plotLegendClone.find("span#time span.digits")
-          for key, series of plotData
-            series.legendElement = plotLegendClone.find("span##{key} span.digits")
+        plotRedrawLegend() if plotLegend
           
           # MathJax.Hub.Queue ["Typeset", MathJax.Hub], ()->
           #   for key, series of plotData
@@ -344,7 +346,8 @@ do ->
           $.extend true, {}, plotOptions,
             xaxis: { min: ranges.xaxis.from, max: ranges.xaxis.to }
             yaxis: { min: ranges.yaxis.from, max: ranges.yaxis.to }
-        $("#plot-placeholder .legend").replaceWith plotLegend
+        plotRedrawLegend() #if plotLegend
+        # $("#plot-placeholder .legend").replaceWith plotLegend
       
       updateLegendTimeout = latestPosition = null
       
@@ -523,6 +526,8 @@ do ->
     render = ->
       time = (new Date).getTime()
       t =  (time - startTime)/1000.0
+      if t > 1000
+        stopSimulation()
       dt = (time - lastTime) / 1000
       # rotationVelocity.precession = 90 * Math.abs( Math.sin pi*nutation.value/180)
       if simulationState
@@ -579,46 +584,6 @@ do ->
 
       renderer.render scene, camera
       return
-
-    window.EDX.getGrade = ->
-      # The following return value may or may not be used to grade
-      # server-side.
-      # If getState and setState are used, then the Python grader also gets
-      # access to the return value of getState and can choose it instead to
-      # grade.
-      result = {
-        A: parseFloat $('input#JA').val()
-        C: parseFloat $('input#JC').val()
-      }
-      JSON.stringify result
-
-    getState = ->
-      JSON.stringify state
-
-    # This function will be called with 1 argument when JSChannel is not used,
-    # 2 otherwise. In the latter case, the first argument is a transaction
-    # object that will not be used here
-    # (see http://mozilla.github.io/jschannel/docs/)
-
-    setState = ->
-      stateStr = if arguments.length == 1 then arguments[0] else arguments[1]
-      state = JSON.parse(stateStr)
-      updateMaterials()
-      return
-
-    if window.parent != window
-      channel = Channel.build(
-        window: window.parent
-        origin: '*'
-        scope: 'JSInput')
-      channel.bind 'window.EDX.getGrade', getGrade
-      channel.bind 'getState', getState
-      channel.bind 'setState', setState
+      
     init()
-    {
-      getState: getState
-      setState: setState
-      getGrade: getGrade
-    }
-
   )

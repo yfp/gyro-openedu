@@ -31,7 +31,48 @@
     <script src="physics.js" defer='defer'></script> 
     <script src="controls.js" defer='defer'></script>-->
 
+    <script type="text/javascript">
+    var EDX = (function() {
+        var state = {
+                'selectedObjects': {
+                    'cylinder': false,
+                    'cube': false
+                }
+            },
+            channel;
 
+        if (window.parent !== window) {
+            channel = Channel.build({
+                window: window.parent,
+                origin: "*",
+                scope: "JSInput"
+            });
+
+            channel.bind("getGrade", getGrade);
+            channel.bind("getState", getState);
+            channel.bind("setState", setState);
+        }
+
+        function getGrade() {
+            return JSON.stringify({key1: 123});
+        }
+
+        function getState() {
+            return JSON.stringify({key2: 441});
+        }
+
+        function setState() {
+            stateStr = arguments.length === 1 ? arguments[0] : arguments[1];
+            state = JSON.parse(stateStr);
+        }
+
+        return {
+            getState: getState,
+            setState: setState,
+            getGrade: getGrade
+        };
+    }());
+    </script>
 
     
 </head>
